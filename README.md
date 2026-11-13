@@ -40,12 +40,6 @@ The model is driven by the frozen noise protocol of Zeldenrust et al. (2017),
 Continuous Input Time Series*, Frontiers in Computational Neuroscience 11:49.
 <https://doi.org/10.3389/fncom.2017.00049>
 
-## Git conventions
-
-- Small commits, one change each.
-- One branch per phase (`phase-0-setup`, `phase-1-spike-source`, ...), merged into `main` when the phase is done.
-- A tag at the end of each phase (`v0.1-recording-chain`, ...).
-
 ## Setup
 
 Requires Python 3.10 or newer.
