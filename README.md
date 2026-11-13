@@ -3,7 +3,7 @@
 Simulating the path from neuron to bits: how electrode, amplifier, ADC and
 on-chip spike detection choices affect what a brain-computer interface can read.
 
-**Status:** work in progress (Phase 0, project setup).
+**Status:** work in progress (Phase 0 done, Phase 1 next).
 
 ## What this project does
 
@@ -21,7 +21,7 @@ one concrete outcome: can the spikes still be detected?
 
 | Phase | Goal | Status |
 |---|---|---|
-| 0 | Project setup | in progress |
+| 0 | Project setup | done |
 | 1 | Spike source with known spike times, baseline detector and scoring | planned |
 | 2 | Recording chain: electrode noise, amplifier, filters, ADC | planned |
 | 3 | Parameter sweeps: signal-to-noise ratio and detection accuracy | planned |
@@ -45,3 +45,14 @@ Continuous Input Time Series*, Frontiers in Computational Neuroscience 11:49.
 - Small commits, one change each.
 - One branch per phase (`phase-0-setup`, `phase-1-spike-source`, ...), merged into `main` when the phase is done.
 - A tag at the end of each phase (`v0.1-recording-chain`, ...).
+
+## Setup
+
+Requires Python 3.10 or newer.
+
+```
+python -m venv .venv
+.venv\Scripts\activate        # Windows; on macOS/Linux: source .venv/bin/activate
+pip install -e ".[dev]"
+pytest
+```
