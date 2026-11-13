@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Data: never commit recordings or simulation output, only the code that makes them
+data/raw/
+data/processed/
+*.mat
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.nwb
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
