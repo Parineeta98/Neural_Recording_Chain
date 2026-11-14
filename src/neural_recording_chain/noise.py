@@ -24,3 +24,11 @@ def background_noise_uV(n_samples, dt_ms, rms_uV=10.0, low_Hz=300.0, high_Hz=300
     shaped = sosfilt(sos, white)
 
     return shaped * (rms_uV / shaped.std())
+
+def slow_wave_uV(n_samples, dt_ms, amplitude_uV=1000.0, frequency_Hz=8.0):
+    # the time of every sample, in seconds
+    sample_numbers = np.arange(n_samples)
+    time_s = sample_numbers * dt_ms / 1000.0
+    # a smooth wave that goes up and down "frequency_Hz" times per second
+    wave = amplitude_uV * np.sin(2 * np.pi * frequency_Hz * time_s)
+    return wave
