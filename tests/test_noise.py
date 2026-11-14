@@ -25,13 +25,11 @@ def test_background_noise_has_requested_size():
     hum = background_noise_uV(n_samples=50_000, dt_ms=0.05, rms_uV=10.0)
     assert abs(hum.std() - 10.0) < 0.01
 
-
 def test_background_noise_sits_in_the_spike_band():
     hum = background_noise_uV(n_samples=200_000, dt_ms=0.05)
     frequencies, power = welch(hum, fs=20_000, nperseg=4096)
     in_band = (frequencies > 300) & (frequencies < 3000)
     assert power[in_band].sum() / power.sum() > 0.7
-
 
 def test_background_and_thermal_noise_are_unrelated():
     hum = background_noise_uV(n_samples=50_000, dt_ms=0.05)
