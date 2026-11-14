@@ -3,7 +3,7 @@
 Simulating the path from neuron to bits: how electrode, amplifier, ADC and
 on-chip spike detection choices affect what a brain-computer interface can read.
 
-**Status:** work in progress (Phase 0 done, Phase 1 next).
+**Status:** work in progress (Phase 2 done, Phase 3 next).
 
 ## What this project does
 
