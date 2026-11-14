@@ -18,16 +18,13 @@ This project models each stage in Python and measures how its settings change
 one concrete outcome: can the spikes still be detected?
 
 ## Roadmap
-
-| Phase | Goal | Status |
-|---|---|---|
 | 0 | Project setup | done |
-| 1 | Spike source with known spike times, baseline detector and scoring | planned |
-| 2 | Recording chain: electrode noise, amplifier, filters, ADC | planned |
-| 3 | Parameter sweeps: signal-to-noise ratio and detection accuracy | planned |
-| 4 | Fixed-point spike detection | planned |
-| 5 | Data rate and power budget at 100, 1,000 and 10,000 channels | planned |
-| 6 | Validation on real recordings, write-up | planned |
+| 1 | Spike source: input, neuron, true spike times, electrode signal | done |
+| 2 | Recording chain: noise, filter, digitiser, spike detector, scoring | done |
+| 3 | Data rate and power budget at 100, 1,000 and 10,000 channels | planned |
+| 4 | Spike detection with whole-number arithmetic, as on a chip | planned |
+| 5 | Validation on real recordings | planned |
+| 6 | Write-up | planned |
 
 ## Spike source
 
