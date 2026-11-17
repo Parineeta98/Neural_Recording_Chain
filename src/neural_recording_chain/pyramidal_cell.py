@@ -92,8 +92,8 @@ betans=   0.25*exp(-1.0-0.025*Vs/mV)/ms: Hz
 
 
 # calcium induced potassium current
-alphacd=((int(Vd/mV<=-10)*exp(((Vd/mV+50.0)/11) - (Vd/mV + 53.3) / 27))/18.975 + (int(Vd/mV>-10)*2.0*exp((-53.5-Vd/mV)/27.0)))/ms : Hz
-betacd=(int(Vd/mV<=-10)*(2.0*exp((-53.5-Vd/mV)/27.0)-alphacd*ms))/ms : Hz
+alphacd=((int(Vd/mV<=-10)*exp(((Vd/mV+50.0)/11) - (Vd/mV + 53.3) / 27))/18.975 + (int(Vd/mV>-10)*2.0*exp((-53.3-Vd/mV)/27.0)))/ms : Hz
+betacd=(int(Vd/mV<=-10)*(2.0*exp((-53.3-Vd/mV)/27.0)-alphacd*ms))/ms : Hz
 
 # AHP: calcium induced potassium current
 alphaqd=  clip(0.00002*Cad,0.00002*Cad, 0.01)/ms: Hz
