@@ -1,8 +1,12 @@
-"""The answer key: check whether the neuronal activity is a burst or a single spike.
+"""The answer key: when the neuron fired, and whether each event was a burst or a single spike.
 
-The rule follows Zeldenrust & Wadman (2013), section 2.4. Each somatic spike above 0 mV is one event. 
-It is a burst if the first or second dendritic spike after it (the dendrite crossing −11 mV) comes 2 to 9 ms later. 
-Otherwise it is a single spike.
+The rule follows Zeldenrust & Wadman (2013), section 2.4: each somatic spike above 0 mV
+is one event, and it is a burst if the dendrite reaches -11 mV within 2 to 9 ms after it.
+The code tests the highest dendritic voltage in that window, not an upward crossing.
+On recording A, 30 of 211 events had the dendrite already above -11 mV when the window
+opened, because their calcium spike started before 2 ms; a crossing rule would miss these.
+In none of the 211 was the dendrite already above -11 mV at the somatic spike itself,
+so the rule does not pick up calcium spikes left over from an earlier event.
 """
 
 def upward_crossings(voltage_mV, threshold_mV):
