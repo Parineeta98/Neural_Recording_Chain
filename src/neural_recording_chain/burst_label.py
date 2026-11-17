@@ -21,13 +21,23 @@ def label_event(detected_event, signal_uV, time_ms, cutoff_uV):
     else:
         return "single"
 
-def true_type(detected_event, true_events, tolerance_ms=1.0):
-    detection_time = detected_event[0]
-    for true_event in true_events:
-        if detection_time >= true_event[0] - tolerance_ms and detection_time <= true_event[-1] + tolerance_ms:
-            if len(true_event) > 1:
-                return "burst"
-            else:
-                return "single"
-    # no true event here: it was a false alarm
-    return "none"
+def match_true_events(true_event_times, detected_events, tolerance_ms=1.0):
+    # for each true event, the position of the detected event that caught it,
+    # or -1 if no detected event caught it (a miss)
+    matches = []
+    for true_time in true_event_times:
+        found_index = -1
+        for k in range(len(detected_events)):
+            for detection_time in detected_events[k]:
+                if abs(detection_time - true_time) <= tolerance_ms:
+                    found_index = k
+        matches.append(found_index)
+    return matches
+
+def count_unmatched(detected_events, matches):
+    # detected events that did not catch any true event: false positives
+    unmatched = 0
+    for k in range(len(detected_events)):
+        if k not in matches:
+            unmatched = unmatched + 1
+    return unmatched
