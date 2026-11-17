@@ -112,13 +112,16 @@ Id : amp
 Isyns : amp
 Isynd : amp
 '''
-def simulate_pyramidal_cell(input_theory, dt_ms, scale_uA=20.0, baseline_uA=-0.4):
-    start_scope()
+def simulate_pyramidal_cell(input_theory, dt_ms, scale_uA=20.0, baseline_uA=-0.4, calcium_mS=10.0):
     dt = dt_ms * ms
     duration = len(input_theory) * dt
 
     input_current = TimedArray((scale_uA * input_theory + baseline_uA) * uA, dt=dt)
-    namespace = dict(pyr_parameters, input_current=input_current)
+    
+    # namespace = dict(pyr_parameters, input_current=input_current)
+
+    # calcium_mS sets the dendritic calcium conductance (10 mS is the normal value, 0 switches it off)
+    namespace = dict(pyr_parameters, input_current=input_current, gCa=calcium_mS * mS)
 
     cell = NeuronGroup(1, model=eqs_pyr, threshold='Minfs > 0.5', refractory=2 * ms,
                        dt=dt, method='euler', namespace=namespace)
