@@ -1,7 +1,7 @@
 """Tests for the burst label."""
 
 import numpy as np
-from neural_recording_chain.burst_label import label_event, true_type, wobble_after
+from neural_recording_chain.burst_label import label_event, match_true_events, count_unmatched, wobble_after
 
 def make_signal(busy_after_ms=None):
     """Flat signal, with a busy stretch after a given time if asked."""
@@ -34,8 +34,20 @@ def test_one_detection_with_busy_signal_is_a_burst():
     time_ms, signal = make_signal(busy_after_ms=50.0)
     assert label_event([50.0], signal, time_ms, cutoff_uV=18.5) == "burst"
 
-def test_true_type_finds_false_alarms():
-    true_events = [[10.0], [50.0, 53.0, 56.0]]
-    assert true_type([10.2], true_events) == "single"
-    assert true_type([52.9], true_events) == "burst"
-    assert true_type([80.0], true_events) == "none"
+def test_each_true_event_finds_its_group():
+    matches = match_true_events([10.0, 50.0], [[10.2, 14.0], [50.1]])
+    assert matches == [0, 1]
+
+def test_missed_event_gets_minus_one():
+    matches = match_true_events([10.0, 80.0], [[10.2]])
+    assert matches == [0, -1]
+
+def test_group_with_no_true_event_is_unmatched():
+    groups = [[10.2], [30.0], [50.1]]
+    matches = match_true_events([10.0, 50.0], groups)
+    assert count_unmatched(groups, matches) == 1
+
+def test_two_true_events_can_share_a_group():
+    # a doublet: two true events 5 ms apart, detected as one group
+    matches = match_true_events([10.0, 15.0], [[10.1, 15.1]])
+    assert matches == [0, 0]

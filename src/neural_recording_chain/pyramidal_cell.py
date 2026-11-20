@@ -92,8 +92,8 @@ betans=   0.25*exp(-1.0-0.025*Vs/mV)/ms: Hz
 
 
 # calcium induced potassium current
-alphacd=((int(Vd/mV<=-10)*exp(((Vd/mV+50.0)/11) - (Vd/mV + 53.3) / 27))/18.975 + (int(Vd/mV>-10)*2.0*exp((-53.5-Vd/mV)/27.0)))/ms : Hz
-betacd=(int(Vd/mV<=-10)*(2.0*exp((-53.5-Vd/mV)/27.0)-alphacd*ms))/ms : Hz
+alphacd=((int(Vd/mV<=-10)*exp(((Vd/mV+50.0)/11) - (Vd/mV + 53.3) / 27))/18.975 + (int(Vd/mV>-10)*2.0*exp((-53.3-Vd/mV)/27.0)))/ms : Hz
+betacd=(int(Vd/mV<=-10)*(2.0*exp((-53.3-Vd/mV)/27.0)-alphacd*ms))/ms : Hz
 
 # AHP: calcium induced potassium current
 alphaqd=  clip(0.00002*Cad,0.00002*Cad, 0.01)/ms: Hz
@@ -112,13 +112,16 @@ Id : amp
 Isyns : amp
 Isynd : amp
 '''
-def simulate_pyramidal_cell(input_theory, dt_ms, scale_uA=20.0, baseline_uA=-0.4):
-    start_scope()
+def simulate_pyramidal_cell(input_theory, dt_ms, scale_uA=20.0, baseline_uA=-0.4, calcium_mS=10.0):
     dt = dt_ms * ms
     duration = len(input_theory) * dt
 
     input_current = TimedArray((scale_uA * input_theory + baseline_uA) * uA, dt=dt)
-    namespace = dict(pyr_parameters, input_current=input_current)
+    
+    # namespace = dict(pyr_parameters, input_current=input_current)
+
+    # calcium_mS sets the dendritic calcium conductance (10 mS is the normal value, 0 switches it off)
+    namespace = dict(pyr_parameters, input_current=input_current, gCa=calcium_mS * mS)
 
     cell = NeuronGroup(1, model=eqs_pyr, threshold='Minfs > 0.5', refractory=2 * ms,
                        dt=dt, method='euler', namespace=namespace)

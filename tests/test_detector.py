@@ -27,3 +27,18 @@ def test_threshold_follows_the_noise_size():
     time_ms, recording = make_recording([])
     detected_times, threshold = detect_spikes(recording, time_ms, threshold_factor=4.5)
     assert abs(threshold - 4.5 * 15.0) < 3.0
+
+def test_fixed_threshold_is_used():
+    time_ms = np.arange(0, 100, 0.05)
+    recording = np.zeros(len(time_ms))
+    recording[1000] = -60.0   # a big dip
+    recording[1500] = -30.0   # a smaller dip
+
+    # threshold 50: only the big dip counts
+    detected, threshold = detect_spikes(recording, time_ms, threshold_uV=50.0)
+    assert threshold == 50.0
+    assert len(detected) == 1
+
+    # threshold 20: both dips count
+    detected, threshold = detect_spikes(recording, time_ms, threshold_uV=20.0)
+    assert len(detected) == 2
