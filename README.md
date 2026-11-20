@@ -11,11 +11,15 @@ A brain-computer interface never sees a neuron directly. Between the cell and
 the data sits a chain of hardware, and every stage loses something:
 
 ```
-neuron -> electrode -> (amplifier, not modelled separately) -> filter -> ADC -> spike detection -> data link
+neuron -> electrode -> noise -> filter -> ADC -> spike detection -> data link
 ```
 
 This project models each stage in Python and measures how its settings change
 one concrete outcome: can the spikes still be detected?
+
+![The recording chain, stage by stage](docs/figures/chain_stages.png)
+
+*100 ms of recording A around a burst: the neuron's signal at the electrode, with noise added, after the band-pass filter, and after the digitiser with the detector's threshold (red) and detections (green). The slow wave dominates the raw signal and is removed by the filter. Here the burst's first spike and one of its later, smaller spikes are detected; across the whole recording most small spikes inside bursts stay above the threshold and are missed.*
 
 ## Roadmap
 
@@ -37,10 +41,7 @@ The ground-truth spikes come from my hippocampal microcircuit model
 (a Pinsky-Rinzel pyramidal cell and a Wang-Buzsaki interneuron). Only the pyramidal cell is used in this project:
 <https://github.com/Parineeta98/Hippocampal-Microcircuit-Model-of-Pyramidal-Cell-and-Interneuron>
 
-The model is driven by the frozen noise protocol of Zeldenrust et al. (2017),
-*Estimating the Information Extracted by a Single Spiking Neuron from a
-Continuous Input Time Series*, Frontiers in Computational Neuroscience 11:49.
-<https://doi.org/10.3389/fncom.2017.00049>
+The model is driven by the frozen noise protocol of Zeldenrust et al. (2017).
 
 ## Research questions
 
@@ -57,6 +58,14 @@ The questions below were refined during the work, not fixed in advance.
 - **H3.** Bursts leave a longer-lasting signal after the first detection (the "wobble") than single spikes do, because of the dendritic calcium spike. *Status: supported by a control (see below). The difference is there (median 26 uV versus 16 uV on recording A) and it needs the calcium current, but the control cannot separate the dendritic current itself from the extra spikes it causes.*
 - **Question 3, outcome.** On recording B (same input level) the burst label reaches a balanced accuracy of 91.7% (only 26 single spikes, so this number is uncertain). On recording C (about four times more spikes) it drops to 79.9%: all 414 caught bursts are labelled correctly, but only 405 of 677 caught single spikes are (683 true singles; 6 were never detected). Of the 272 wrong singles, 257 sat in a group of two or more detections, and in 253 of these the group also held another true event; only 15 were wrong because of the wobble cut-off. The rule "two or more detections = burst" therefore only works when events are well spaced. This is a limitation of the method and is not fixed here.
 
+![False alarms at each bit depth](docs/figures/bit_depth_false_alarms.png)
+
+*H1: false alarms at each bit depth with the threshold fixed before the digitiser (numbers in brackets: tall spikes found, of 211). Rounding to the digitiser's steps moves the effective threshold, so false alarms do not fall steadily with more bits.*
+
+![Data rate when sending everything or spikes only](docs/figures/data_budget.png)
+
+*H2: data rate against the number of electrodes when the chip sends every sample (8 bits, 20 kHz) or only the detected spikes (32 bits each), compared with a radio link of about 1 Mbps.*
+
 ## Detection results
 
 All chip settings (4.5 times the noise, 3 ms dead time, 8 bits, ±500 µV) were chosen on recording A and then run unchanged on B and C (notebook 03). Spike-level key, ±1 ms.
@@ -67,7 +76,7 @@ All chip settings (4.5 times the noise, 3 ms dead time, 8 bits, ±500 µV) were 
 | Small spikes found | 43 / 331 (13%) | 38 / 291 (13%) | 250 / 964 (26%) |
 | False alarms in 60 s | 6 | 4 | 11 |
 
-The small spikes inside bursts are mostly missed on all three recordings. Two settings cause this: the threshold (they are smaller than it) and the 3 ms dead time (on recording A, 1 ms finds 76 small spikes but with 169 false alarms; 3 ms finds 46 with 6). B and C use a new input and new noise, but the same neuron, electrode model and noise model.
+The small spikes inside bursts are mostly missed on all three recordings. Two settings cause this: the threshold (they are smaller than it) and the 3 ms dead time. On recording A, a 1 ms dead time finds 72 of 331 small spikes but with 164 false alarms, against 43 with 6 false alarms at 3 ms (notebook 03). B and C use a new input and new noise, but the same neuron, electrode model and noise model.
 
 ## Control: calcium switched off
 
@@ -79,6 +88,10 @@ As a control, recording A's input was simulated with the dendritic calcium condu
 | Single spike, calcium off | 15.9 uV |
 | Single spike, normal neuron | 16.2 uV |
 | Burst, normal neuron | 25.8 uV |
+
+![Wobble after a detection with and without the calcium current](docs/figures/wobble_calcium_control.png)
+
+*H3: the wobble 2 to 10 ms after a detection, for noise-only windows, events with the calcium current switched off, and bursts with it on. The dashed line is the burst cut-off chosen on recording A.*
 
 ## Step-size check
 
@@ -96,9 +109,9 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 
 ## Methods
 
-**Neuron model.** A two-compartment Pinsky-Rinzel pyramidal cell (soma and dendrite), simulated in Brian2 (Euler method, 0.05 ms step). The calcium gate constants (53.3) follow Zeldenrust and Wadman (2013), Appendix A.1. Interneurons are not included.
+**Neuron model.** A two-compartment Pinsky-Rinzel pyramidal cell (soma and dendrite; Pinsky & Rinzel, 1994; Rinzel & Pinsky, 1995), simulated in Brian2 (Euler method, 0.05 ms step). The calcium gate constants (53.3) follow Zeldenrust and Wadman (2013), Appendix A.1. Interneurons are not included.
 
-**Input.** Frozen noise following Zeldenrust et al. (2017): a hidden on/off state (time constant 50 ms) driving 1,000 artificial input neurons, filtered with a 5 ms kernel. The input is regenerated with fixed seeds, not loaded from the thesis files. Settings: scale 20, baseline -0.4 (units to be confirmed).
+**Input.** Frozen noise following Zeldenrust et al. (2017): a hidden on/off state (time constant 50 ms) driving 1,000 artificial input neurons, filtered with a 5 ms kernel. The input is regenerated with fixed seeds, not loaded from the thesis files. Settings: scale 20 uA, baseline -0.4 uA (the code uses uA; the model's parameters are Pinsky and Rinzel's per-area values, so this is effectively uA/cm2).
 
 **Recordings** (60 s each).
 - **A** (seed 0): used to choose all chip settings (tuning) and the burst-label cut-off. Its results are in-sample.
@@ -110,6 +123,10 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 - *Event level:* the burst rule from Zeldenrust and Wadman (2013), section 2.4. Each somatic spike crossing 0 mV starts one event. It is a burst if the dendrite reaches -11 mV within 2 to 9 ms afterwards; otherwise it is a single spike. The code tests the highest dendrite voltage in that window, not an upward crossing. On recording A, 30 of the 211 events already had the dendrite above -11 mV when the window opened (their calcium spike started within 2 ms), so a strict crossing rule would call up to 30 bursts singles. In none of the 211 was the dendrite already above -11 mV at the somatic spike itself.
 - *Gap rule (what the chip can do on its own):* spikes less than 10 ms apart belong to one event, since the chip cannot see the dendrite.
 
+![A burst and a single spike](docs/figures/burst_and_single.png)
+
+*The event-level answer key on recording A: in a burst (left) the dendrite reaches -11 mV inside the 2 to 9 ms window after the somatic spike; in a single spike (right) it stays below.*
+
 **Recording chain.**
 1. Extracellular potential at the electrode: a two-point-source approximation (soma 50 um, dendrite 200 um away, tissue conductivity 0.3 S/m).
 2. Noise: thermal noise (1 MOhm, 310 K, about 13 uV rms), background activity (10 uV rms, 300 to 3000 Hz) and a slow wave (8 Hz, 1000 uV).
@@ -117,17 +134,21 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 4. Digitiser: chosen bit depth and input range, with clipping.
 5. Detector: a negative threshold at a multiple of the noise level (median-based estimate), with a dead time between detections.
 
+**Electrode model.** The extracellular potential is computed with the point-source approximation (Ness et al., 2022): the soma and the dendrite are each treated as a single point current source, and their contributions are summed. The current is the coupling current between the two compartments, so the cell acts as a simple two-point source. This assumes the tissue conducts equally well in all directions and everywhere, which normally gives fair estimates in cortical tissue (Ness et al., 2022). The conductivity is set to 0.3 S/m, a commonly used modelling value (for example in the LFPy examples; Lindén et al., 2014), not a value measured for this cell. The electrode distances (50 um from the soma, 200 um from the dendrite) and the membrane area are assumed; they set the spike size at the electrode. Two point sources are a strong simplification of a real neuron's shape.
+
 **Thermal noise.** Electrode thermal noise is modelled as Johnson-Nyquist noise, sqrt(4kTRB) (Johnson, 1928; Nyquist, 1928), with T = 310 K, R = 1 MOhm and B = 10 kHz (half the sampling rate), giving 13.1 uV rms. It is generated as white noise over that whole band, and the 300 to 3000 Hz filter then keeps only part of it. The 1 MOhm is an assumed order of magnitude, not a measured value. In real electrodes only the resistive (real) part of the impedance produces thermal noise (Obien et al., 2015), so treating the full 1 MOhm as a resistor probably overestimates this noise.
 
 **Background activity.** Activity from distant neurons is modelled as band-limited noise (300 to 3000 Hz) of 10 uV rms. This value is assumed, not sourced; how the total noise splits between thermal noise and background activity is a choice made here. After band-pass filtering, the total noise in the simulated recording is about 12 uV (the detector's estimate is 52.1 uV / 4.5 = 11.6 uV). For comparison, noise measured per channel in tetrode recordings from visual cortex had a mean of 21 uV rms (range 12 to 35 uV; Mechler & Victor, 2012), so this simulation is at the quiet end. The spikes are large by comparison: the tall spikes reach about 283 uV at the electrode (179 uV after filtering) at the assumed 50 um distance, against a measured mean of 91 uV (range 25 to 313 uV) in the same data. The filter band of those recordings was not checked, so the noise comparison is approximate. Real recordings are often noisier, with smaller spikes, so the detection results here are on the optimistic side. Mains interference (50 Hz) is not modelled.
+
+**Slow wave.** A sine wave of 8 Hz and 1000 uV stands in for hippocampal theta, which in the awake rat lies at about 6 to 9 Hz (Buzsaki, 2002), as a field potential of up to about 2 mV (Bland, 2008). The size and frequency are assumed values. This follows the rodent rhythm. In humans, hippocampal rhythms of 1 to 4 Hz have been reported (Jacobs, 2014), although 7 to 9 Hz has also been seen during real-world and virtual navigation, with the frequency varying between tasks (Bohbot et al., 2017). In this chain the band-pass filter comes before the digitiser, and its gain at 8 Hz is about -65 dB, so a 1000 uV wave leaves less than 1 uV (apart from a start-up transient of about 12 uV in the first 20 ms). Its exact size therefore has little effect on the results here. It would matter for a chip that digitises before filtering: with the wave added, the recording spans -1316 to +1203 uV (notebook 03), more than the +-500 uV input range used.
 
 **Scoring.**
 - Detection: each true spike is matched to at most one detection (within 1 ms). Hits, misses and false alarms (detections matching no true spike) are reported. Tall spikes are those that reach above 0 mV in the cell body; small spikes are the rest (mostly later spikes inside a burst).
 - Burst label: each true event is counted once, with misses and false alarms reported. Here a false alarm is a detected group of detections that matches no true event, which is a different count from the detection false alarms above. Balanced accuracy is used, because the recordings contain unequal numbers of bursts and single spikes.
 
-**Data budget.** Raw rate = electrodes x sampling rate x bits. Spike rate = electrodes x spikes per second x 32 bits. The spike rate comes from the detections in recording A (about 4.3 per second) and assumes every electrode sits next to a neuron like it. Both are compared with Neuralink's published figures (about 200 Mbps produced, about 1 Mbps wireless). The extra bit for the burst label and the chip's computing cost are not included.
+**Data budget.** Raw rate = electrodes x sampling rate x bits. Spike rate = electrodes x spikes per second x 32 bits. The spike rate comes from the detections in recording A (about 4.3 per second) and assumes every electrode sits next to a neuron like it. Both are compared with Neuralink's published figures (about 200 Mbps produced, about 1 Mbps wireless; Neuralink). The extra bit for the burst label and the chip's computing cost are not included.
 
-**Assumptions without a source yet:** the background-noise size, the electrode resistance (1 MOhm), the slow-wave size, the membrane area, the electrode distances, the tissue conductivity, the 20 kHz sampling rate, the input units, the 32 bits per spike, and the chip settings chosen on recording A (4.5 times the noise, 3 ms dead time, 8 bits, +-500 uV). Spike counts can also differ slightly between computers.
+**Assumptions without a source yet:** the background-noise size, the electrode resistance (1 MOhm), the slow-wave size, the membrane area, the electrode distances, the 20 kHz sampling rate, the input units, the 32 bits per spike, and the chip settings chosen on recording A (4.5 times the noise, 3 ms dead time, 8 bits, +-500 uV). Spike counts can also differ slightly between computers.
 
 ## What this project does not model
 
@@ -135,14 +156,21 @@ An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more tha
 
 ## References
 
-- Pinsky, P. F., & Rinzel, J. (1994). Intrinsic and network rhythmogenesis in a reduced Traub model for CA3 neurons. *Journal of Computational Neuroscience*, 1, 39-60.
-- Mechler, F., & Victor, J. D. (2012). Dipole characterization of single neurons from their extracellular action potentials. *Journal of Computational Neuroscience*, 32(1), 73-100. <https://doi.org/10.1007/s10827-011-0341-0>
+- Bland, B. H. (2008). Anatomical, physiological, and pharmacological properties underlying hippocampal sensorimotor integration. In C. Holscher & M. Munk (Eds.), *Information Processing by Neuronal Populations* (pp. 283-325). Cambridge University Press.
+- Bohbot, V. D., Copara, M. S., Gotman, J., & Ekstrom, A. D. (2017). Low-frequency theta oscillations in the human hippocampus during real-world and virtual navigation. *Nature Communications*, 8, 14415. <https://doi.org/10.1038/ncomms14415>
+- Buzsaki, G. (2002). Theta oscillations in the hippocampus. *Neuron*, 33(3), 325-340. <https://doi.org/10.1016/S0896-6273(02)00586-X>
+- Jacobs, J. (2014). Hippocampal theta oscillations are slower in humans than in rodents: implications for models of spatial navigation and memory. *Philosophical Transactions of the Royal Society B*, 369(1635), 20130304. <https://doi.org/10.1098/rstb.2013.0304>
 - Johnson, J. B. (1928). Thermal agitation of electricity in conductors. *Physical Review*, 32(1), 97-109. <https://doi.org/10.1103/PhysRev.32.97>
+- Lindén, H., Hagen, E., Łęski, S., Norheim, E. S., Pettersen, K. H., & Einevoll, G. T. (2014). LFPy: a tool for biophysical simulation of extracellular potentials generated by detailed model neurons. *Frontiers in Neuroinformatics*, 7, 41. <https://doi.org/10.3389/fninf.2013.00041>
+- Mechler, F., & Victor, J. D. (2012). Dipole characterization of single neurons from their extracellular action potentials. *Journal of Computational Neuroscience*, 32(1), 73-100. <https://doi.org/10.1007/s10827-011-0341-0>
+- Ness, T. V., Halnes, G., Næss, S., Pettersen, K. H., & Einevoll, G. T. (2022). Computing extracellular electric potentials from neuronal simulations. *Advances in Experimental Medicine and Biology*, 1359, 179-199. <https://doi.org/10.1007/978-3-030-89439-9_8>
+- Neuralink. Compression challenge. <https://content.neuralink.com/compression-challenge/README.html>
 - Nyquist, H. (1928). Thermal agitation of electric charge in conductors. *Physical Review*, 32(1), 110-113. <https://doi.org/10.1103/PhysRev.32.110>
 - Obien, M. E. J., Deligkaris, K., Bullmann, T., Bakkum, D. J., & Frey, U. (2015). Revealing neuronal function through microelectrode array recordings. *Frontiers in Neuroscience*, 8, 423. <https://doi.org/10.3389/fnins.2014.00423>
-- Zeldenrust, F., & Wadman, W. J. (2013). Modulation of spike and burst rate in a minimal neuronal circuit with feed-forward inhibition. *Neural Networks*, 40, 1-17.
-- Zeldenrust, F., de Knecht, S., Wadman, W. J., Deneve, S., & Gutkin, B. (2017). Estimating the information extracted by a single spiking neuron from a continuous input time series. *Frontiers in Computational Neuroscience*, 11, 49.
-- Neuralink compression challenge: <https://content.neuralink.com/compression-challenge/README.html>
+- Pinsky, P. F., & Rinzel, J. (1994). Intrinsic and network rhythmogenesis in a reduced Traub model for CA3 neurons. *Journal of Computational Neuroscience*, 1(1-2), 39-60. <https://doi.org/10.1007/BF00962717>
+- Rinzel, J., & Pinsky, P. F. (1995). Erratum for: Intrinsic and network rhythmogenesis in a reduced Traub model for CA3 neurons. *Journal of Computational Neuroscience*, 2.
+- Zeldenrust, F., & Wadman, W. J. (2013). Modulation of spike and burst rate in a minimal neuronal circuit with feed-forward inhibition. *Neural Networks*, 40, 1-17. <https://doi.org/10.1016/j.neunet.2012.12.008>
+- Zeldenrust, F., de Knecht, S., Wadman, W. J., Deneve, S., & Gutkin, B. (2017). Estimating the information extracted by a single spiking neuron from a continuous input time series. *Frontiers in Computational Neuroscience*, 11, 49. <https://doi.org/10.3389/fncom.2017.00049>
 
 ## Setup
 
