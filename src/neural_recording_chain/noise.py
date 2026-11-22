@@ -5,6 +5,7 @@ temperature_K is the temperature of the tissue in Kelvin -- body temperature, 37
 """
 import numpy as np
 from scipy.signal import butter, sosfilt
+from neural_recording_chain.filter import bandpass_filter
 
 boltzman_J_per_K = 1.380649e-23 #a constant of nature that links temperature to energy
 
@@ -18,11 +19,9 @@ def thermal_noise_uV(n_samples, dt_ms, resistance_ohm=1e6, temperature_K=310.0, 
 def background_noise_uV(n_samples, dt_ms, rms_uV=10.0, low_Hz=300.0, high_Hz=3000.0, seed=1):
     rng = np.random.default_rng(seed)
     white = rng.normal(0.0, 1.0, n_samples)
-
     sampling_rate_Hz = 1000.0 / dt_ms
     sos = butter(2, [low_Hz, high_Hz], btype="bandpass", fs=sampling_rate_Hz, output="sos")
-    shaped = sosfilt(sos, white)
-
+    shaped = bandpass_filter(white, dt_ms, low_Hz, high_Hz)
     return shaped * (rms_uV / shaped.std())
 
 def slow_wave_uV(n_samples, dt_ms, amplitude_uV=1000.0, frequency_Hz=8.0):
