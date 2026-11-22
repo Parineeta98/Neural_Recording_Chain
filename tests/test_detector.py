@@ -73,8 +73,9 @@ def test_chip_detector_uses_its_own_threshold_and_warm_up():
     codes[30000] = -40    # a big dip after settling
     codes[30010] = -30    # too soon after the last one (dead time 60 samples)
     codes[35000] = -15    # smaller than the threshold
-    detected = detect_spikes_on_chip(codes, min_gap_samples=60, samples_to_settle=20000)
+    detected, thresholds = detect_spikes_on_chip(codes, min_gap_samples=60, samples_to_settle=20000)
     assert list(detected) == [30000]
+    assert thresholds[30100] == 22
 
 def test_chip_detector_pauses_the_average_after_a_detection():
     # background of size 4 codes, so the threshold settles at about 22 codes
@@ -82,5 +83,6 @@ def test_chip_detector_pauses_the_average_after_a_detection():
     codes[30000] = -40          # a detection
     codes[30001:30060] = 127    # a huge signal right after it, inside the dead time
     codes[30100] = -24          # a dip just above the settled threshold
-    detected = detect_spikes_on_chip(codes, min_gap_samples=60, samples_to_settle=20000)
+    detected, thresholds = detect_spikes_on_chip(codes, min_gap_samples=60, samples_to_settle=20000)
     assert list(detected) == [30000, 30100]
+    assert thresholds[30100] == 22 

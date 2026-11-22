@@ -72,6 +72,7 @@ def detect_spikes_on_chip(codes, min_gap_samples, samples_to_settle=32768,
                           shift=13, extra_bits=6, multiplier=361, multiplier_shift=6):
     total = 0
     detected_samples = []
+    thresholds = []
     last_spike_sample = -1000000
 
     for i in range(len(codes)):
@@ -86,6 +87,7 @@ def detect_spikes_on_chip(codes, min_gap_samples, samples_to_settle=32768,
             total = total + (size << extra_bits) - (total >> shift)
         # threshold = 5.64 x the average size
         threshold_code = (total * multiplier) >> (shift + extra_bits + multiplier_shift)
+        thresholds.append(threshold_code)
         # no detections while the threshold settles, and none at the first or last sample, which have no neighbour on one side
         if i < samples_to_settle or i == 0 or i == len(codes) - 1:
             continue
@@ -97,4 +99,4 @@ def detect_spikes_on_chip(codes, min_gap_samples, samples_to_settle=32768,
         if is_below_threshold and is_lowest_point and is_far_enough:
             detected_samples.append(i)
             last_spike_sample = i
-    return np.array(detected_samples)
+    return np.array(detected_samples), np.array(thresholds)
