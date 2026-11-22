@@ -126,7 +126,7 @@ These figures cover only what each detector has to remember, not the digitiser, 
 
 ## Control: calcium switched off
 
-As a control, recording A's input was simulated with the dendritic calcium conductance set to zero. This produced no bursts (466 single spikes). The wobble after detection, for the 463 events the chip saw as one detection, had a median of 15.9 uV. That matches normal single spikes (16.2 uV) and sits above the noise floor (11.3 uV), which reflects the spike tail and filter ringing that every spike has. Only bursts with the calcium current on reached the higher level (25.8 uV), and 8 of the 463 calcium-off events (1.7%) crossed the burst cut-off. The burst wobble therefore depends on the calcium current, though this control cannot separate the dendritic current itself from the extra small spikes it causes.
+As a control, recording A's input was simulated with the dendritic calcium conductance set to zero. This produced no bursts (466 single spikes). The wobble after detection, for the 463 events the detector saw as one detection, had a median of 15.9 uV. That matches normal single spikes (16.2 uV) and sits above the noise floor (11.3 uV), which reflects the spike tail and filter ringing that every spike has. Only bursts with the calcium current on reached the higher level (25.8 uV), and 8 of the 463 calcium-off events (1.7%) crossed the burst cut-off. The burst wobble therefore depends on the calcium current, though this control cannot separate the dendritic current itself from the extra small spikes it causes.
 
 | Situation | Typical wobble |
 |---|---|
@@ -167,7 +167,7 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 **Answer keys.**
 - *Spike level:* every somatic spike, found with a peak finder (above -40 mV, prominence 5 mV). Used to score detection. The count depends on these settings (prominence 2, 5, 10 and 20 mV gave 572, 543, 517 and 449 spikes before the calcium constant was changed to 53.3; with 5 mV the count is now 542); the tall spikes are stable.
 - *Event level:* the burst rule from Zeldenrust and Wadman (2013), section 2.4. Each somatic spike crossing 0 mV starts one event. It is a burst if the dendrite reaches -11 mV within 2 to 9 ms afterwards; otherwise it is a single spike. The code tests the highest dendrite voltage in that window, not an upward crossing. On recording A, 30 of the 211 events already had the dendrite above -11 mV when the window opened (their calcium spike started within 2 ms), so a strict crossing rule would call up to 30 bursts singles. In none of the 211 was the dendrite already above -11 mV at the somatic spike itself.
-- *Gap rule (what the chip can do on its own):* spikes less than 10 ms apart belong to one event, since the chip cannot see the dendrite.
+- *Gap rule (what the detector can do on its own):* spikes less than 10 ms apart belong to one event, since the detector cannot see the dendrite.
 
 ![A burst and a single spike](docs/figures/burst_and_single.png)
 
