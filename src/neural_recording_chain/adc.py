@@ -18,3 +18,20 @@ def digitise(signal_uV, n_bits=10, input_range_uV=1000.0):
 
     digitised_uV = np.array(digitised)
     return digitised_uV, step_uV
+
+def to_codes(signal_uV, n_bits=10, input_range_uV=1000.0):
+    n_levels = 2 ** n_bits
+    step_uV = (2 * input_range_uV) / n_levels
+    lowest_code = -(n_levels // 2)
+    highest_code = n_levels // 2 - 1
+
+    codes = []
+    for value in signal_uV:
+        code = round(value / step_uV)
+        # codes outside what the digitiser can store are cut off
+        if code < lowest_code:
+            code = lowest_code
+        if code > highest_code:
+            code = highest_code
+        codes.append(code)
+    return np.array(codes), step_uV
