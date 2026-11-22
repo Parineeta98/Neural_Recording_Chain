@@ -3,6 +3,16 @@ boltzman_J_per_K is a constant of nature that links temperature to energy.
 resistance_ohm is the magnitude for a small recording electrode. 
 temperature_K is the temperature of the tissue in Kelvin -- body temperature, 37 °C, in kelvin
 """
+
+# Sources and choices for the values in this file:
+# - thermal noise sqrt(4kTRB): Johnson (1928); Nyquist (1928)
+# - 1 MOhm: an assumed order of magnitude; only the resistive part of a real
+#   electrode's impedance makes thermal noise (Obien et al., 2015)
+# - 310 K: body temperature, 37 degrees C
+# - 10 uV background activity: assumed
+# - 8 Hz and 1000 uV slow wave: within the range of hippocampal theta in rodents
+#   (Buzsaki, 2002; Bland, 2008)
+
 import numpy as np
 from scipy.signal import butter, sosfilt
 from neural_recording_chain.filter import bandpass_filter

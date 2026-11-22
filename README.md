@@ -31,7 +31,7 @@ one concrete outcome: can the spikes still be detected?
 | 3 | Data rate at 100, 1,000 and 10,000 channels | done |
 | 3b | Power budget | planned |
 | 3c | Burst or single-spike label from the chip's own detections | done |
-| 4 | Spike detection with whole-number arithmetic, as on a chip | planned |
+| 4 | Spike detection with whole-number arithmetic, as on a chip | in progress |
 | 5 | Validation on real recordings | planned |
 | 6 | Write-up | planned |
 
@@ -130,9 +130,9 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 **Recording chain.**
 1. Extracellular potential at the electrode: a two-point-source approximation (soma 50 um, dendrite 200 um away, tissue conductivity 0.3 S/m).
 2. Noise: thermal noise (1 MOhm, 310 K, about 13 uV rms), background activity (10 uV rms, 300 to 3000 Hz) and a slow wave (8 Hz, 1000 uV).
-3. Band-pass filter: Butterworth, order 2, 300 to 3000 Hz.
+3. Band-pass filter: Butterworth, order 2, 300 to 3000 Hz, applied forwards in time as a chip would. The band follows the example in Quian Quiroga (2007); Quian Quiroga et al. (2004) used a wider band (300 to 6000 Hz, four-pole Butterworth). The order is a choice made here.
 4. Digitiser: chosen bit depth and input range, with clipping.
-5. Detector: a negative threshold at a multiple of the noise level (median-based estimate), with a dead time between detections.
+5. Detector: a negative threshold at a multiple of the noise level, with a dead time between detections. The noise level is estimated as median(|x|) / 0.6745 (Quian Quiroga et al., 2004). Their threshold is 4 times this noise level; 4.5 was chosen here on recording A.
 
 **Electrode model.** The extracellular potential is computed with the point-source approximation (Ness et al., 2022): the soma and the dendrite are each treated as a single point current source, and their contributions are summed. The current is the coupling current between the two compartments, so the cell acts as a simple two-point source. This assumes the tissue conducts equally well in all directions and everywhere, which normally gives fair estimates in cortical tissue (Ness et al., 2022). The conductivity is set to 0.3 S/m, a commonly used modelling value (for example in the LFPy examples; Lindén et al., 2014), not a value measured for this cell. The electrode distances (50 um from the soma, 200 um from the dendrite) and the membrane area are assumed; they set the spike size at the electrode. Two point sources are a strong simplification of a real neuron's shape.
 
@@ -148,11 +148,22 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 
 **Data budget.** Raw rate = electrodes x sampling rate x bits. Spike rate = electrodes x spikes per second x 32 bits. The spike rate comes from the detections in recording A (about 4.3 per second) and assumes every electrode sits next to a neuron like it. Both are compared with Neuralink's published figures (about 200 Mbps produced, about 1 Mbps wireless; Neuralink). The extra bit for the burst label and the chip's computing cost are not included.
 
+**Chip detector (whole numbers).** A second detector (`detect_spikes_on_chip` in `detector.py`) works only with whole numbers, as a chip would. It takes the digitiser's codes instead of microvolts (8 bits: -128 to +127; one code is 3.9 uV at +-500 uV), counts the dead time in samples (3 ms = 60 samples) and returns sample numbers. The band-pass filter is treated as analogue, before the digitiser, so it stays in floating point. With a given threshold (converted to codes by dropping the decimals), the whole-number rules make the same decisions as the floating-point detector.
+
+The chip cannot use the median: it would need the whole recording stored and sorted. Instead it keeps a running average of the signal's size, the usual low-cost choice in spike-detection hardware, while the median is more accurate but much more expensive to build (Oprea et al., 2022). The average is updated with every sample using only additions and bit shifts, as in hardware spike detectors (Harrison, 2003; Zhang & Constandinou, 2021):
+- Each sample moves the average 1/8192 of the way towards its own size (a shift by 13 bits), so the average follows roughly the last 8,192 samples (410 ms): much longer than a spike or a burst, much shorter than the slow drift of a real implant.
+- The average is stored 64 times larger (6 extra bits), so its fractions are not lost when shifting. Without them, it settled about half a code too high.
+- The threshold is 5.64 times the average size (implemented as x 361, then a shift by 6 bits). For Gaussian noise the mean absolute value is 0.798 times the standard deviation, so 5.64 times the average matches the floating-point detector's 4.5 times the noise.
+- Following Zhang and Constandinou (2021), the average is not updated during the dead time after a detection, so the spikes themselves pull it up less. Their second rule, leaving out samples above half the threshold, was not used: it lowers the average, and with a factor derived for Gaussian noise it set the threshold too low.
+- The average starts at zero, so the detector ignores the first 32,768 samples (1.6 s) while the threshold settles. That is four time constants, after which less than 2% of the starting value remains.
+
+The time constant, the settling period and the factor 5.64 are choices made here, not values taken from a source.
+
 **Assumptions without a source yet:** the background-noise size, the electrode resistance (1 MOhm), the slow-wave size, the membrane area, the electrode distances, the 20 kHz sampling rate, the input units, the 32 bits per spike, and the chip settings chosen on recording A (4.5 times the noise, 3 ms dead time, 8 bits, +-500 uV). Spike counts can also differ slightly between computers.
 
 ## What this project does not model
 
-An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more than one neuron, real recorded data, a fixed-point implementation, a power budget, or any specific company's device.
+An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more than one neuron, real recorded data, a whole-number (fixed-point) filter, a power budget, or any specific company's device.
 
 ## References
 
@@ -160,6 +171,7 @@ An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more tha
 - Bohbot, V. D., Copara, M. S., Gotman, J., & Ekstrom, A. D. (2017). Low-frequency theta oscillations in the human hippocampus during real-world and virtual navigation. *Nature Communications*, 8, 14415. <https://doi.org/10.1038/ncomms14415>
 - Buzsaki, G. (2002). Theta oscillations in the hippocampus. *Neuron*, 33(3), 325-340. <https://doi.org/10.1016/S0896-6273(02)00586-X>
 - Jacobs, J. (2014). Hippocampal theta oscillations are slower in humans than in rodents: implications for models of spatial navigation and memory. *Philosophical Transactions of the Royal Society B*, 369(1635), 20130304. <https://doi.org/10.1098/rstb.2013.0304>
+- Harrison, R. R. (2003). A low-power integrated circuit for adaptive detection of action potentials in noisy signals. In *Proceedings of the 25th Annual International Conference of the IEEE Engineering in Medicine and Biology Society* (pp. 3325-3328). <https://doi.org/10.1109/IEMBS.2003.1280856>
 - Johnson, J. B. (1928). Thermal agitation of electricity in conductors. *Physical Review*, 32(1), 97-109. <https://doi.org/10.1103/PhysRev.32.97>
 - Lindén, H., Hagen, E., Łęski, S., Norheim, E. S., Pettersen, K. H., & Einevoll, G. T. (2014). LFPy: a tool for biophysical simulation of extracellular potentials generated by detailed model neurons. *Frontiers in Neuroinformatics*, 7, 41. <https://doi.org/10.3389/fninf.2013.00041>
 - Mechler, F., & Victor, J. D. (2012). Dipole characterization of single neurons from their extracellular action potentials. *Journal of Computational Neuroscience*, 32(1), 73-100. <https://doi.org/10.1007/s10827-011-0341-0>
@@ -167,10 +179,14 @@ An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more tha
 - Neuralink. Compression challenge. <https://content.neuralink.com/compression-challenge/README.html>
 - Nyquist, H. (1928). Thermal agitation of electric charge in conductors. *Physical Review*, 32(1), 110-113. <https://doi.org/10.1103/PhysRev.32.110>
 - Obien, M. E. J., Deligkaris, K., Bullmann, T., Bakkum, D. J., & Frey, U. (2015). Revealing neuronal function through microelectrode array recordings. *Frontiers in Neuroscience*, 8, 423. <https://doi.org/10.3389/fnins.2014.00423>
+- Oprea, A., Zhang, Z., & Constandinou, T. G. (2022). Hardware evaluation of spike detection algorithms towards wireless brain machine interfaces. *bioRxiv*. <https://doi.org/10.1101/2022.06.23.497414>
 - Pinsky, P. F., & Rinzel, J. (1994). Intrinsic and network rhythmogenesis in a reduced Traub model for CA3 neurons. *Journal of Computational Neuroscience*, 1(1-2), 39-60. <https://doi.org/10.1007/BF00962717>
+- Quian Quiroga, R. (2007). Spike sorting. *Scholarpedia*, 2(12), 3583. <https://doi.org/10.4249/scholarpedia.3583>
+- Quian Quiroga, R., Nadasdy, Z., & Ben-Shaul, Y. (2004). Unsupervised spike detection and sorting with wavelets and superparamagnetic clustering. *Neural Computation*, 16(8), 1661-1687. <https://doi.org/10.1162/089976604774201631>
 - Rinzel, J., & Pinsky, P. F. (1995). Erratum for: Intrinsic and network rhythmogenesis in a reduced Traub model for CA3 neurons. *Journal of Computational Neuroscience*, 2.
 - Zeldenrust, F., & Wadman, W. J. (2013). Modulation of spike and burst rate in a minimal neuronal circuit with feed-forward inhibition. *Neural Networks*, 40, 1-17. <https://doi.org/10.1016/j.neunet.2012.12.008>
 - Zeldenrust, F., de Knecht, S., Wadman, W. J., Deneve, S., & Gutkin, B. (2017). Estimating the information extracted by a single spiking neuron from a continuous input time series. *Frontiers in Computational Neuroscience*, 11, 49. <https://doi.org/10.3389/fncom.2017.00049>
+- Zhang, Z., & Constandinou, T. G. (2021). Adaptive spike detection and hardware optimization towards autonomous, high-channel-count BMIs. *Journal of Neuroscience Methods*, 354, 109103. <https://doi.org/10.1016/j.jneumeth.2021.109103>
 
 ## Setup
 

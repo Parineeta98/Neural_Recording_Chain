@@ -1,4 +1,9 @@
 """Filters that keep the spike frequencies and remove the rest."""
+# Sources and choices for the values in this file:
+# - 300 to 3000 Hz: the band in Quian Quiroga (2007);
+#   Quian Quiroga et al. (2004) used 300 to 6000 Hz
+# - Butterworth, order 2: chosen here
+
 from scipy.signal import butter, sosfilt
 
 def bandpass_filter(signal_uV, dt_ms, low_Hz=300.0, high_Hz=3000.0):
