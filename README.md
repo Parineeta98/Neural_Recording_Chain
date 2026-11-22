@@ -29,7 +29,7 @@ one concrete outcome: can the spikes still be detected?
 | 1 | Spike source: input, neuron, true spike times, electrode signal | done |
 | 2 | Recording chain: noise, filter, digitiser, spike detector, scoring | done |
 | 3 | Data rate at 100, 1,000 and 10,000 channels | done |
-| 3b | Power budget | in progress |
+| 3b | Power budget | done (radio and front end; spike detection itself not included) |
 | 3c | Burst or single-spike label from the detector's own detections | done |
 | 4 | Spike detection with whole-number arithmetic, as on a chip | done (detector only; the filter stays in floating point) |
 | 5 | Validation on real recordings | planned |
@@ -123,6 +123,25 @@ Per electrode, the chip detector stores 57 bits: the running average (27 bits), 
 | 10,000 | 71 kB | 200 MB |
 
 These figures cover only what each detector has to remember, not the digitiser, the filter, sending the data or the rest of the chip. A real sliding median would also need extra bookkeeping to stay sorted, so 160,000 bits is the minimum for it. These ratios are against an exact median. Approximations need far less: Oprea et al. (2022) estimate the median from 25 samples, and Burman et al. (2024) describe a median estimator that needs no stored samples, so the saving over a practical median is much smaller. The memory available on real implant chips was not looked up.
+
+## Power budget
+
+The power of the radio and the front end was added up for 1 to 100,000 electrodes and compared with the heat limit of a 6 x 6 mm chip, 28.8 mW (notebook 08; sources and assumptions under Methods). The spike rate is the 4.3 detections per second on recording A, and the bit rates are those of the data budget (8 bits at 20 kHz, or 32 bits per spike).
+
+| Case | Power per electrode | Electrodes under the heat limit |
+|---|---|---|
+| Send everything, typical radio (38 pJ/bit) | 6.49 uW | 4,437 |
+| Send everything, efficient radio (5.8 pJ/bit) | 1.34 uW | 21,524 |
+| Spikes only, typical radio | 0.415 uW | 69,359 |
+| Spikes only, efficient radio | 0.411 uW | 70,107 |
+
+![Power against the number of electrodes](docs/figures/power_budget.png)
+
+*Total power (front end plus radio) against the number of electrodes. The dotted line is the front end alone; the red dashed line is the heat limit of a 6 x 6 mm chip.*
+
+Sending only spikes cuts the radio's power by about 1,000 times, after which the radio is almost free and the front end (0.41 uW per electrode) is nearly all of the remaining power. Sending everything with the typical radio crosses the heat limit at about 4,400 electrodes, and with the efficient radio at about 21,500.
+
+Under these numbers, heat is not the tightest limit. The data budget showed that a link of about 1 Mbps carries everything from only 6 electrodes, or spikes from up to about 7,300, far fewer than the heat limit allows in either case. So for a link of that size, spike detection is needed mainly to fit the data through the link, and only at larger electrode counts or with a less efficient radio also to stay under the heat limit. Three things make the power figures optimistic: the energy per bit is each transmitter's own best value, without the extra energy to reach a receiver further away; spike detection and the rest of the chip are not counted; and the front end is one 22 nm chip's figure, not a model of this chain.
 
 ## Control: calcium switched off
 
