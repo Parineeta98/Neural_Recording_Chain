@@ -1,4 +1,8 @@
 """Find spike times in a simulated membrane potential. This function does not handle flat topped peaks that can sometimes be found in real data."""
+
+# Choices for the values in this file:
+# - minimum height -40 mV and minimum prominence 5 mV: chosen here
+
 import numpy as np
 
 def find_spikes(v_soma_mV, time_ms, min_height_mV=-40.0, min_prominence_mV=5.0):

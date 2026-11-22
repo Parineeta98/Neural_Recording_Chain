@@ -1,4 +1,11 @@
 """Voltage at an electrode outside the pyramidal cell."""
+
+# Sources and choices for the values in this file:
+# - point-source approximation: Ness et al. (2022)
+# - 0.3 S/m: a common modelling value, as in the LFPy examples (Linden et al., 2014)
+# - coupling 2.1 mS/cm2: the soma-dendrite coupling of Pinsky & Rinzel (1994)
+# - distances (50 and 200 um) and membrane area: assumed
+
 import numpy as np
 
 def extracellular_potential(

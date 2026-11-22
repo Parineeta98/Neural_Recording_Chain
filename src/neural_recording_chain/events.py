@@ -1,5 +1,8 @@
 """Group spikes into events-- single spikes and bursts."""
 
+# Choices for the values in this file:
+# - 10 ms between spikes of one burst: chosen here
+
 def group_into_events(spike_times_ms, max_gap_ms=10.0):
     # each event is a list of the spike times that belong together based on the gap between them ie ISI
     events = []
