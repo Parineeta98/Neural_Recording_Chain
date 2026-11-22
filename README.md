@@ -3,7 +3,7 @@
 Simulating the path from neuron to bits: how electrode noise, filtering, ADC and
 on-chip spike detection choices affect what a brain-computer interface can read.
 
-**Status:** work in progress. The spike source, recording chain, data-rate calculation and burst label are done. Whole-number arithmetic, a power budget and real recordings are still to do.
+**Status:** work in progress. The spike source, recording chain, data-rate calculation and burst label are done. The whole-number spike detector is done too (the filter stays in floating point). A power budget and real recordings are still to do.
 
 ## What this project does
 
@@ -31,7 +31,7 @@ one concrete outcome: can the spikes still be detected?
 | 3 | Data rate at 100, 1,000 and 10,000 channels | done |
 | 3b | Power budget | planned |
 | 3c | Burst or single-spike label from the chip's own detections | done |
-| 4 | Spike detection with whole-number arithmetic, as on a chip | in progress |
+| 4 | Spike detection with whole-number arithmetic, as on a chip | done (detector only; the filter stays in floating point) |
 | 5 | Validation on real recordings | planned |
 | 6 | Write-up | planned |
 
@@ -77,6 +77,52 @@ All chip settings (4.5 times the noise, 3 ms dead time, 8 bits, ±500 µV) were 
 | False alarms in 60 s | 6 | 4 | 11 |
 
 The small spikes inside bursts are mostly missed on all three recordings. Two settings cause this: the threshold (they are smaller than it) and the 3 ms dead time. On recording A, a 1 ms dead time finds 72 of 331 small spikes but with 164 false alarms, against 43 with 6 false alarms at 3 ms (notebook 03). B and C use a new input and new noise, but the same neuron, electrode model and noise model.
+
+## Chip detector (whole numbers)
+
+The whole-number detector (see Methods) was run on the same signal as the floating-point detector: 8 bits, ±500 µV, and only the samples after the first 1.6 s, while the chip's average settles (notebook 07). Spike-level key, ±1 ms.
+
+**Recordings A and B: the chip matches the floating-point detector.**
+
+| | Tall spikes | Small spikes | False alarms |
+|---|---|---|---|
+| A, floating-point | 201 / 203 | 41 / 319 | 6 |
+| A, chip | 201 / 203 | 38 / 319 | 7 |
+| B, floating-point | 160 / 160 | 38 / 283 | 4 |
+| B, chip | 160 / 160 | 38 / 283 | 5 |
+
+The chip finds the same tall spikes, and the small spikes and false alarms differ by at most 3. A detector built only from whole numbers, additions and shifts, with one stored number instead of the whole recording, does as well as the floating-point version on these two recordings.
+
+**Recording C: the chip is stricter.**
+
+| | Tall spikes | Small spikes | False alarms |
+|---|---|---|---|
+| C, floating-point | 1,062 / 1,071 | 241 / 934 | 11 |
+| C, chip | 1,059 / 1,071 | 167 / 934 | 2 |
+
+On recording C, with about four times the firing rate, the chip found 3 fewer tall spikes and 74 fewer small spikes, with 9 fewer false alarms. That is the pattern of a higher threshold, and the thresholds show it (notebook 07). The floating-point threshold is 52.1 µV, which is 13.3 codes (one code is 3.9 µV). The chip's threshold changes over time, so its typical value (median) and range over the recording are given:
+
+| | Floating-point threshold | Chip threshold, typical | Chip range |
+|---|---|---|---|
+| A | 13.3 codes | 13 | 12 to 14 |
+| B | 13.3 codes | 13 | 12 to 14 |
+| C | 13.3 codes | 14 | 13 to 15 |
+
+On A and B the two thresholds are effectively the same: for whole numbers, "a code below −13.3" is the same as "a code below −13", which is the chip's typical value. It only moves by one code now and then, which fits the small differences of up to 3 spikes. On C the chip's threshold is typically one code higher, while the median-based one stays at 13.3 even with four times as many spikes. This agrees with the explanation that frequent spikes push the running average up and not the median (Oprea et al., 2022). The pause after a detection keeps the samples after a spike out of the average, but not the samples just before it (the way down into the dip) and not the small spikes that were never detected; with four times as many spikes these add up. This mechanism was not tested separately: the thresholds show that the chip's is higher on C, not why. One code (3.9 µV) was enough to change 74 small-spike detections, because many small spikes lie close to the threshold. The tall spikes are far above it and are barely affected (3 fewer).
+
+The counts here differ from the table under "Detection results" because the first 1.6 s are left out (203 tall and 319 small spikes on A instead of 211 and 331), and because both detectors here work on the digitised signal.
+
+### Memory
+
+Per electrode, the chip detector stores 57 bits: the running average (27 bits), the last three codes for the lowest-point check (24 bits) and the dead-time counter (6 bits), plus one 16-bit settling counter shared by all electrodes (notebook 07 calculates the first three). A median over only the last second would need every sample of that second, 160,000 bits per electrode (2,807 times more), and a median over a 60 s recording 9.6 million bits (about 170,000 times more).
+
+| Electrodes | Chip detector | Median over the last second |
+|---|---|---|
+| 100 | 0.7 kB | 2 MB |
+| 1,000 | 7.1 kB | 20 MB |
+| 10,000 | 71 kB | 200 MB |
+
+These figures cover only what each detector has to remember, not the digitiser, the filter, sending the data or the rest of the chip. A real sliding median would also need extra bookkeeping to stay sorted, so 160,000 bits is the minimum for it. The memory available on real implant chips was not looked up.
 
 ## Control: calcium switched off
 
@@ -150,7 +196,7 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 
 **Chip detector (whole numbers).** A second detector (`detect_spikes_on_chip` in `detector.py`) works only with whole numbers, as a chip would. It takes the digitiser's codes instead of microvolts (8 bits: -128 to +127; one code is 3.9 uV at +-500 uV), counts the dead time in samples (3 ms = 60 samples) and returns sample numbers. The band-pass filter is treated as analogue, before the digitiser, so it stays in floating point. With a given threshold (converted to codes by dropping the decimals), the whole-number rules make the same decisions as the floating-point detector.
 
-The chip cannot use the median: it would need the whole recording stored and sorted. Instead it keeps a running average of the signal's size, the usual low-cost choice in spike-detection hardware, while the median is more accurate but much more expensive to build (Oprea et al., 2022). The average is updated with every sample using only additions and bit shifts, as in hardware spike detectors (Harrison, 2003; Zhang & Constandinou, 2021):
+The chip cannot cheaply use the exact median: it would need the recent recording stored and sorted (approximations exist, such as the one proposed by Oprea et al., 2022). Instead it keeps a running average of the signal's size, the usual low-cost choice in spike-detection hardware, while the median is more accurate but much more expensive to build (Oprea et al., 2022). The average is updated with every sample using only additions and bit shifts, as in hardware spike detectors (Harrison, 2003; Zhang & Constandinou, 2021):
 - Each sample moves the average 1/8192 of the way towards its own size (a shift by 13 bits), so the average follows roughly the last 8,192 samples (410 ms): much longer than a spike or a burst, much shorter than the slow drift of a real implant.
 - The average is stored 64 times larger (6 extra bits), so its fractions are not lost when shifting. Without them, it settled about half a code too high.
 - The threshold is 5.64 times the average size (implemented as x 361, then a shift by 6 bits). For Gaussian noise the mean absolute value is 0.798 times the standard deviation, so 5.64 times the average matches the floating-point detector's 4.5 times the noise.
