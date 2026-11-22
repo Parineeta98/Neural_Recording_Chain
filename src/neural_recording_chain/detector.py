@@ -26,3 +26,16 @@ def detect_spikes(recording_uV, time_ms, threshold_factor=4.5, min_gap_ms=1.0, t
 
     detected_times = np.array(detected_times)
     return detected_times, threshold_uV
+
+def detect_spikes_integer(codes, threshold_code, min_gap_samples):
+    detected_samples = []
+    last_spike_sample = -1000000
+    for i in range(1, len(codes) - 1):
+        code = codes[i]
+        is_below_threshold = code < -threshold_code
+        is_lowest_point = code < codes[i - 1] and code <= codes[i + 1]
+        is_far_enough = i - last_spike_sample >= min_gap_samples
+        if is_below_threshold and is_lowest_point and is_far_enough:
+            detected_samples.append(i)
+            last_spike_sample = i
+    return np.array(detected_samples)

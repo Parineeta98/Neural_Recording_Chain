@@ -1,7 +1,7 @@
 """Tests for the spike detector."""
 
 import numpy as np
-from neural_recording_chain.detector import detect_spikes
+from neural_recording_chain.detector import detect_spikes, detect_spikes_integer
 
 def make_recording(dip_times_ms):
     """Noisy recording with a -300 uV dip at each of the given times."""
@@ -42,3 +42,17 @@ def test_fixed_threshold_is_used():
     # threshold 20: both dips count
     detected, threshold = detect_spikes(recording, time_ms, threshold_uV=20.0)
     assert len(detected) == 2
+
+def test_integer_detector_uses_codes_and_samples():
+    codes = np.zeros(200, dtype=int)
+    codes[50] = -20    # a big dip
+    codes[80] = -15    # a second dip, 30 samples later
+    codes[150] = -10   # a small dip
+    # threshold 12 codes, dead time 40 samples:
+    # the dip at 80 is too soon after 50, and the dip at 150 is too small
+    detected = detect_spikes_integer(codes, threshold_code=12, min_gap_samples=40)
+    assert list(detected) == [50]
+
+    # a shorter dead time of 20 samples lets the second dip through
+    detected = detect_spikes_integer(codes, threshold_code=12, min_gap_samples=20)
+    assert list(detected) == [50, 80]
