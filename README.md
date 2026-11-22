@@ -141,7 +141,18 @@ The power of the radio and the front end was added up for 1 to 100,000 electrode
 
 Sending only spikes cuts the radio's power by about 1,000 times, after which the radio is almost free and the front end (0.41 uW per electrode) is nearly all of the remaining power. Sending everything with the typical radio crosses the heat limit at about 4,400 electrodes, and with the efficient radio at about 21,500.
 
-Under these numbers, heat is not the tightest limit. The data budget showed that a link of about 1 Mbps carries everything from only 6 electrodes, or spikes from up to about 7,300, far fewer than the heat limit allows in either case. So for a link of that size, spike detection is needed mainly to fit the data through the link, and only at larger electrode counts or with a less efficient radio also to stay under the heat limit. Three things make the power figures optimistic: the energy per bit is each transmitter's own best value, without the extra energy to reach a receiver further away; spike detection and the rest of the chip are not counted; and the front end is one 22 nm chip's figure, not a model of this chain.
+Heat is not always the tightest limit; the radio's own data rate can be. Each radio has a maximum rate: 1.66 Gbps for the efficient radio (Song et al., 2022) and 5 Mbps for the typical one (Mercier et al., 2014). The typical radio was designed for low data-rate sensing and sends in short bursts at 5 Mbps, so treating 5 Mbps as its continuous rate is a simplification. The number of electrodes an implant can handle is the smaller of what the link can carry and what stays under the heat limit (notebook 08):
+
+| Radio | Case | Link carries | Heat limit allows | Limit |
+|---|---|---|---|---|
+| Efficient (1.66 Gbps) | Send everything | 10,375 | 21,524 | 10,375 (link) |
+| Efficient (1.66 Gbps) | Spikes only | about 12 million | 70,107 | 70,107 (heat) |
+| Typical (5 Mbps) | Send everything | 31 | 4,437 | 31 (link) |
+| Typical (5 Mbps) | Spikes only | 36,337 | 69,359 | 36,337 (link) |
+
+Sending everything is limited by the link with both radios. With spike detection, the efficient radio is limited by heat, set almost entirely by the front end, and the typical radio still by its link. The about 1 Mbps link of the data budget carries everything from only 6 electrodes, or spikes from about 7,300. Which limit matters therefore depends on the radio, and spike detection raises the limit in every case.
+
+Three things make the power figures optimistic: the energy per bit is each transmitter's own best value, without the extra energy to reach a receiver further away; spike detection and the rest of the chip are not counted; and the front end is one 22 nm chip's figure, not a model of this chain.
 
 ## Control: calcium switched off
 
