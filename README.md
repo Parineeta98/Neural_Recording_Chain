@@ -29,7 +29,7 @@ one concrete outcome: can the spikes still be detected?
 | 1 | Spike source: input, neuron, true spike times, electrode signal | done |
 | 2 | Recording chain: noise, filter, digitiser, spike detector, scoring | done |
 | 3 | Data rate at 100, 1,000 and 10,000 channels | done |
-| 3b | Power budget | planned |
+| 3b | Power budget | in progress |
 | 3c | Burst or single-spike label from the detector's own detections | done |
 | 4 | Spike detection with whole-number arithmetic, as on a chip | done (detector only; the filter stays in floating point) |
 | 5 | Validation on real recordings | planned |
@@ -194,6 +194,13 @@ Event times shifted by about 0.1 ms (0.07 to 0.13 ms), well within the 1 ms scor
 
 **Data budget.** Raw rate = electrodes x sampling rate x bits. Spike rate = electrodes x spikes per second x 32 bits. The spike rate comes from the detections in recording A (about 4.3 per second) and assumes every electrode sits next to a neuron like it. Both are compared with Neuralink's published figures (about 200 Mbps produced, about 1 Mbps wireless; Neuralink). The extra bit for the burst label and the chip's computing cost are not included.
 
+**Power budget.** Everything on an implant turns its power into heat in the tissue, so the power is limited by how much warming the tissue tolerates. Three parts are compared (`data_rate.py`):
+- **Radio:** power = bits per second x energy per bit. Two published implant transmitters set the range: 5.8 pJ/bit for an ultra-wideband transmitter designed for intracortical recordings (Song et al., 2022) and 38 pJ/bit for a low-power 2.4 GHz transmitter (Mercier et al., 2014). The bit rates are the raw and spike-only rates from the data budget.
+- **Front end:** the amplifier and digitiser on every electrode run all the time, whether spikes are sent or not. 0.41 uW per electrode is used, measured on a 22 nm chip with 9-bit output at 20 kHz (Guo et al., 2024). This is one published chip, not a model of the chain here.
+- **Heat limit:** about 80 mW per cm2 of tissue touched by the implant (0.8 mW per mm2), which keeps the warming to about 1 degree C (Kim et al., 2006). Kim et al. take this figure from Seese et al. (1998), whose measurements are from muscle tissue, not brain. A 6 x 6 mm chip, the size Kim et al. modelled, may then use about 28.8 mW.
+
+Not included: the power of spike detection itself, the rest of the chip, and the extra energy a radio needs to reach a receiver further away. The energy-per-bit figures are the transmitters' own, so the radio power here is a lower bound.
+
 **Chip detector (whole numbers).** A second detector (`detect_spikes_on_chip` in `detector.py`) works only with whole numbers, as a chip would. In this README, "chip detector" always means this whole-number detector; everything else (the detection results, the burst label and the data budget) uses the floating-point detector. It takes the digitiser's codes instead of microvolts (8 bits: -128 to +127; one code is 3.9 uV at +-500 uV), counts the dead time in samples (3 ms = 60 samples) and returns sample numbers. The band-pass filter is treated as analogue, before the digitiser, so it stays in floating point. With a given threshold (converted to codes by dropping the decimals), the whole-number rules make the same decisions as the floating-point detector.
 
 The chip cannot cheaply use the exact median: it would need the recent recording stored and sorted (approximations exist, such as the one proposed by Oprea et al., 2022). Instead it keeps a running average of the signal's size, the usual low-cost choice in spike-detection hardware, while the median is more accurate and more robust to the choice of threshold factor, but the exact median is much more expensive to build (Oprea et al., 2022). The average itself is updated with every sample using only additions and bit shifts, as in hardware spike detectors (Harrison, 2003; Zhang & Constandinou, 2021):
@@ -209,7 +216,7 @@ The time constant, the settling period and the factor 5.64 are choices made here
 
 ## What this project does not model
 
-An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more than one neuron, real recorded data, a whole-number (fixed-point) filter, a power budget, or any specific company's device.
+An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more than one neuron, real recorded data, a whole-number (fixed-point) filter, the power of the front end (taken from one published chip) or of spike detection itself, or any specific company's device.
 
 ## References
 
@@ -217,11 +224,14 @@ An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more tha
 - Bohbot, V. D., Copara, M. S., Gotman, J., & Ekstrom, A. D. (2017). Low-frequency theta oscillations in the human hippocampus during real-world and virtual navigation. *Nature Communications*, 8, 14415. <https://doi.org/10.1038/ncomms14415>
 - Burman, A., Solé-Casals, J., & Lew, S. E. (2024). Robust and memory-less median estimation for real-time spike detection. *PLOS ONE*, 19(11), e0308125. <https://doi.org/10.1371/journal.pone.0308125>
 - Buzsaki, G. (2002). Theta oscillations in the hippocampus. *Neuron*, 33(3), 325-340. <https://doi.org/10.1016/S0896-6273(02)00586-X>
-- Jacobs, J. (2014). Hippocampal theta oscillations are slower in humans than in rodents: implications for models of spatial navigation and memory. *Philosophical Transactions of the Royal Society B*, 369(1635), 20130304. <https://doi.org/10.1098/rstb.2013.0304>
+- Guo, L., Weiße, A., Zeinolabedin, S. M. A., Schüffny, F. M., Stolba, M., Ma, Q., Wang, Z., Scholze, S., Dixius, A., Berthel, M., Partzsch, J., Walter, D., Ellguth, G., Höppner, S., George, R., & Mayr, C. (2024). 68-channel neural signal processing system-on-chip with integrated feature extraction, compression, and hardware accelerators for neuroprosthetics in 22 nm FDSOI. *Frontiers in Neuroscience*, 18, 1432750. <https://doi.org/10.3389/fnins.2024.1432750>
 - Harrison, R. R. (2003). A low-power integrated circuit for adaptive detection of action potentials in noisy signals. In *Proceedings of the 25th Annual International Conference of the IEEE Engineering in Medicine and Biology Society* (pp. 3325-3328). <https://doi.org/10.1109/IEMBS.2003.1280856>
+- Jacobs, J. (2014). Hippocampal theta oscillations are slower in humans than in rodents: implications for models of spatial navigation and memory. *Philosophical Transactions of the Royal Society B*, 369(1635), 20130304. <https://doi.org/10.1098/rstb.2013.0304>
 - Johnson, J. B. (1928). Thermal agitation of electricity in conductors. *Physical Review*, 32(1), 97-109. <https://doi.org/10.1103/PhysRev.32.97>
+- Kim, S., Normann, R. A., Harrison, R. R., & Solzbacher, F. (2006). Preliminary study of the thermal impact of a microelectrode array implanted in the brain. In *Proceedings of the 28th Annual International Conference of the IEEE Engineering in Medicine and Biology Society* (pp. 2986-2989). <https://doi.org/10.1109/IEMBS.2006.260307>
 - Lindén, H., Hagen, E., Łęski, S., Norheim, E. S., Pettersen, K. H., & Einevoll, G. T. (2014). LFPy: a tool for biophysical simulation of extracellular potentials generated by detailed model neurons. *Frontiers in Neuroinformatics*, 7, 41. <https://doi.org/10.3389/fninf.2013.00041>
 - Mechler, F., & Victor, J. D. (2012). Dipole characterization of single neurons from their extracellular action potentials. *Journal of Computational Neuroscience*, 32(1), 73-100. <https://doi.org/10.1007/s10827-011-0341-0>
+- Mercier, P. P., Bandyopadhyay, S., Lysaght, A. C., Stankovic, K. M., & Chandrakasan, A. P. (2014). A sub-nW 2.4 GHz transmitter for low data-rate sensing applications. *IEEE Journal of Solid-State Circuits*, 49(7), 1463-1474. <https://doi.org/10.1109/JSSC.2014.2316237>
 - Ness, T. V., Halnes, G., Næss, S., Pettersen, K. H., & Einevoll, G. T. (2022). Computing extracellular electric potentials from neuronal simulations. *Advances in Experimental Medicine and Biology*, 1359, 179-199. <https://doi.org/10.1007/978-3-030-89439-9_8>
 - Neuralink. Compression challenge. <https://content.neuralink.com/compression-challenge/README.html>
 - Nyquist, H. (1928). Thermal agitation of electric charge in conductors. *Physical Review*, 32(1), 110-113. <https://doi.org/10.1103/PhysRev.32.110>
@@ -231,6 +241,8 @@ An amplifier, a real electrode's impedance, a surface (ECoG) electrode, more tha
 - Quian Quiroga, R. (2007). Spike sorting. *Scholarpedia*, 2(12), 3583. <https://doi.org/10.4249/scholarpedia.3583>
 - Quian Quiroga, R., Nadasdy, Z., & Ben-Shaul, Y. (2004). Unsupervised spike detection and sorting with wavelets and superparamagnetic clustering. *Neural Computation*, 16(8), 1661-1687. <https://doi.org/10.1162/089976604774201631>
 - Rinzel, J., & Pinsky, P. F. (1995). Erratum for: Intrinsic and network rhythmogenesis in a reduced Traub model for CA3 neurons. *Journal of Computational Neuroscience*, 2.
+- Seese, T. M., Harasaki, H., Saidel, G. M., & Davies, C. R. (1998). Characterization of tissue morphology, angiogenesis, and temperature in the adaptive response of muscle tissue to chronic heating. *Laboratory Investigation*, 78, 1553-1562.
+- Song, M., Huang, Y., Visser, H. J., Romme, J., & Liu, Y.-H. (2022). An energy-efficient and high-data-rate IR-UWB transmitter for intracortical neural sensing interfaces. *IEEE Journal of Solid-State Circuits*, 57(12), 3656-3668. <https://doi.org/10.1109/JSSC.2022.3212672>
 - Zeldenrust, F., & Wadman, W. J. (2013). Modulation of spike and burst rate in a minimal neuronal circuit with feed-forward inhibition. *Neural Networks*, 40, 1-17. <https://doi.org/10.1016/j.neunet.2012.12.008>
 - Zeldenrust, F., de Knecht, S., Wadman, W. J., Deneve, S., & Gutkin, B. (2017). Estimating the information extracted by a single spiking neuron from a continuous input time series. *Frontiers in Computational Neuroscience*, 11, 49. <https://doi.org/10.3389/fncom.2017.00049>
 - Zhang, Z., & Constandinou, T. G. (2021). Adaptive spike detection and hardware optimization towards autonomous, high-channel-count BMIs. *Journal of Neuroscience Methods*, 354, 109103. <https://doi.org/10.1016/j.jneumeth.2021.109103>
