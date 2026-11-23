@@ -1,5 +1,5 @@
 """Noise sources that a real electrode adds to the signal.
-boltzman_J_per_K is a constant of nature that links temperature to energy.
+boltzmann_J_per_K is a constant of nature that links temperature to energy.
 resistance_ohm is the magnitude for a small recording electrode. 
 temperature_K is the temperature of the tissue in Kelvin -- body temperature, 37 °C, in kelvin
 """
@@ -17,12 +17,12 @@ import numpy as np
 from scipy.signal import butter, sosfilt
 from neural_recording_chain.filter import bandpass_filter
 
-boltzman_J_per_K = 1.380649e-23 #a constant of nature that links temperature to energy
+boltzmann_J_per_K = 1.380649e-23 #a constant of nature that links temperature to energy
 
 def thermal_noise_uV(n_samples, dt_ms, resistance_ohm=1e6, temperature_K=310.0, seed=0):
     rng = np.random.default_rng(seed)
     bandwidth_Hz = 1.0 / (2.0 * dt_ms * 1e-3)
-    rms_V = np.sqrt(4.0 * boltzman_J_per_K * temperature_K * resistance_ohm * bandwidth_Hz)
+    rms_V = np.sqrt(4.0 * boltzmann_J_per_K * temperature_K * resistance_ohm * bandwidth_Hz)
     rms_uV = rms_V * 1e6
     return rng.normal(0.0, rms_uV, n_samples)
 
